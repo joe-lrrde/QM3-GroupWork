@@ -1,0 +1,329 @@
+---
+title: "QM3-GroupWork"
+author: "J.Larrodé"
+date: "03/11/2026"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    smooth_scroll: true
+    toc_depth: 2
+    theme: sandstone
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(stargazer)
+library(ggplot2)
+library(performance)
+```
+
+# *Research Question*
+
+## Introduction ## 
+
+<br>
+<br>
+
+## Step 1 : Loading Data ## 
+
+Before all we need to install the packages needed to conduct our analysis *should that go in the Intro maybe?*
+```{r eval=FALSE}
+install.packages("readxl")
+install.packages("stargazer")
+install.packages("ggplot2")
+install.packages("performance")
+```
+*"readxl" extracts the data from excel spreadsheets.* <br>
+*"stargazer" and "ggplot2" are used to create plots.* <br>
+*"performance" package allows to use the **model_comparison** R function.* <br>
+
+We also call their libraries to load the packages. 
+```{r}
+library(readxl)
+library(stargazer)
+library(ggplot2)
+library(performance)
+```
+
+Next we import the datasets we have chosen to use for our analysis. <br>
+We chose these because pur analysis deals with the environment and the relationship between pollution and various economic factors. <br>
+
+The following allow us to measure pollution/CO2 impact : 
+```{r}
+Renewable_energies_dataset <- read_excel("Renewable_energies_dataset.xls")
+C02_emissions_per_capita <- read_excel("C02 emissions per capita.xls")
+```
+
+While these ones are the different economic factors : 
+
+```{r}
+GDP_per_capita_dataset <- read_excel("GDP per capita dataset.xls")
+Gross_Capital_Formation_percentage_of_GDP_ <- read_excel("Gross Capital Formation (percentage of GDP).xls")
+Urban_population_percentage_of_total_ <- read_excel("Urban population (percentage of total).xls")
+Total_natural_resources_rents_of_GDP_ <- read_excel("Total natural resources rents (% of GDP).xls")
+Trade_of_GDP_ <- read_excel("Trade (% of GDP).xls")
+Foreign_direct_investement<- read_excel("Foreign direct investment, net inflows (% of GDP).xls")
+```
+
+Each dataset has data for multiple years. For accuracy we chose to focus on the most recent year *(why only 1 year?)* with the most amount of data, this proved to be the year of 2021 : 
+
+*not sure what this does *
+```{r}
+recentdata<-data.frame(Country = Renewable_energies_dataset$`Country Name`, 
+                       Renewable_energy_consumption = Renewable_energies_dataset$`2021`)
+```
+```{r}
+recentdata <- within(recentdata, {
+              GDP_per_capita = GDP_per_capita_dataset$`2021`
+              Gross_Capital  = Gross_Capital_Formation_percentage_of_GDP_$`2021`
+              Urban_pop      = Urban_population_percentage_of_total_$`2021`
+              Total_natural  = Total_natural_resources_rents_of_GDP_$`2021`
+              Trade_GDP      = Trade_of_GDP_$`2021`
+              Foreign_direct_investement= Foreign_direct_investement$`2021`
+              C02_emissions  = C02_emissions_per_capita$`2021`
+              })
+recentdata <-na.omit(recentdata)
+```
+
+**Table 1**<br>
+*( descriptive statistics )*
+```{r}
+stargazer(recentdata, type="text", digits=1,
+          title ="Table 1: Summary Statistics of the Variables (2021)")
+```
+*brief analysis of stat table*
+
+## Step 2 : Bivariate and Logarithmic OLS ##
+<br>
+We choose to use the Ordinary Least Squares (OLS) regression because it is considered the Best Linear Unbiased Estimator (BLUE). It has a low variance level, it uses the true values of the estimated alpha and beta and on a large sample it will have a precise estimation. 
+
+First, we look at the relationship between Renewable Energy Consumption and GPD per capita. 
+```{r}
+modA1 <- lm(Renewable_energy_consumption ~ GDP_per_capita, data = recentdata)
+stargazer(modA1, type = "text", 
+          title ="Table 2: OLS results for Renewable Energy Consumption and GDP per capita")
+```
+These results indicate a *negative and statistically significant* result.<br>
+
+The R-squared value is of 0.095 which indicates that GDP per capita explains approximately 9.5% of the variation in renewable energy consumption across the 162 countries included in our sample. <br>
+
+The coefficient is -0.0004 ; which assumes a negative correlation ; we can infer that countries with higher GDP per capita tend to have lower shares of renewable energy consumption, on average. <br>
+
+Though significant, the p-value is below the conventional 0.05, this result indicates that there are other variables that probably play a bigger role on the consumption of renewable energy. <br>
+
+*probably more and better analysis to be done*
+
+<br> 
+It is also important to plot the relationship to assess the fit of the model used. 
+```{r}
+plot(recentdata$GDP_per_capita, recentdata$Renewable_energy_consumption,
+     xlab = "GDP per Capita", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between GDP per Capita and Renewable Consumption",
+     col="blue")
+abline(modA1, col="red", lwd=2)
+```
+The plot shows the Gauss-Markov assumptions to be somewhat respected. <br>
+
+Thought increase the precision and readability of the model we add the log function to the GDP.
+```{r}
+modA2 <- lm(Renewable_energy_consumption ~ log(GDP_per_capita), data =recentdata)
+stargazer(modA2, type = "text", 
+          title ="Table 3: OLS results for log(Renewable Energy Consumption) and log(GDP per capita)")
+
+plot(log(recentdata$GDP_per_capita), recentdata$Renewable_energy_consumption,
+     xlab = "log(GDP per Capita)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(GDP per Capita) and Energy Consumption",
+     col="purple")
+abline(modA2, col="green", lwd=2)
+```
+*not sure about the distribution of residuals here* 
+
+
+*We do a similar analysis of the next few*
+```{r}
+modA3 <- lm(Renewable_energy_consumption ~ Gross_Capital, data = recentdata)
+stargazer(modA3, type = "text", 
+          title ="Table 4: OLS results for Renewable Energy Consumption and Gross Capital Formation")
+```
+
+No significant relationship between Renewable Energy Consumption and Gross Capital Formation *explain why*
+```{r}
+plot(recentdata$Gross_Capital, recentdata$Renewable_energy_consumption,
+     xlab = "Gross Capital Formation (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Gross Capital Formation and Renewable Consumption",
+     col="blue")
+abline(modA3, col="red", lwd=2)
+```
+
+**Urban population**
+```{r}
+modA4 <- lm(Renewable_energy_consumption ~ Urban_pop, data = recentdata)
+stargazer(modA4, type = "text", 
+          title ="Table 5: OLS results for Renewable Energy Consumption and Urban Population")
+```
+Really good relation between the variables, the best so far.
+```{r}
+plot(recentdata$Urban_pop, recentdata$Renewable_energy_consumption,
+     xlab = "Urban Population (% of total)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Urban Population and Renewable Consumption",
+     col="blue")
+abline(modA4, col="red", lwd=2)
+```
+
+Again, adding the log function to increase precision
+```{r}
+modA5<-lm(Renewable_energy_consumption ~ log(Urban_pop), data =recentdata)
+stargazer(modA5, type = "text", 
+          title ="Table 6: OLS results for Renewable Energy Consumption and log(Urban Population)")
+```
+
+the log function doesnt improve the analysis. 
+```{r}
+plot(log(recentdata$Urban_pop), recentdata$Renewable_energy_consumption,
+     xlab = "log(Urban Population as % of total)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(Urban Population) and Renewable Consumption",
+     col="blue")
+abline(modA5, col="red", lwd=2)
+```
+
+*more variables*
+```{r}
+modA6 <- lm(Renewable_energy_consumption ~ Total_natural, data = recentdata)
+stargazer(modA6, type = "text", 
+          title ="Table 7: OLS results for Renewable Energy Consumption and Total Natural Resources")
+```
+There is no significant relationship between those two variables
+```{r}
+plot(recentdata$Total_natural, recentdata$Renewable_energy_consumption,
+     xlab = "Total Natural Resources (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Total Natural Resources and Renewable Consumption",
+     col="blue")
+abline(modA6, col="red", lwd=2)
+```
+*last variable*
+```{r}
+modA7 <- lm(Renewable_energy_consumption ~ Trade_GDP, data = recentdata)
+stargazer(modA7, type = "text", 
+          title ="Table 8: OLS results for Renewable Energy Consumption and Trade as % of GDP")
+```
+
+Good relationship between the variables 
+```{r}
+plot(recentdata$Trade_GDP, recentdata$Renewable_energy_consumption,
+     xlab = "Total Trade (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Total Trade and Renewable Consumption",
+     col="blue")
+abline(modA7, col="red", lwd=2)
+```
+
+We try using logarithms in this case
+```{r}
+modA8 <-lm(Renewable_energy_consumption ~ log(Trade_GDP), data =recentdata)
+stargazer(modA8, type = "text", 
+          title ="Table 9: OLS results for Renewable Energy Consumption and log(Trade as % of GDP)")
+```
+It slightly improves using logarithms
+```{r}
+plot(log(recentdata$Trade_GDP), recentdata$Renewable_energy_consumption,
+     xlab = "log(Total Trade as % of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(Total Trade) and Renewable Consumption",
+     col="blue")
+abline(modA8, col="red", lwd=2)
+```
+We check the Direct Foreign Investment
+```{r}
+modA9 <- lm(Renewable_energy_consumption ~ Foreign_direct_investement, data = recentdata)
+summary(modA9)
+stargazer(modA9, type = "text", 
+          title ="Table 10: OLS results for Renewable Energy Consumption and Foreign direct investment")
+```
+There is no significant relationship between those two variables
+```{r}
+plot(recentdata$Foreign_direct_investement, recentdata$Renewable_energy_consumption,
+     xlab = "Foreign direct investment", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Foreign direct investment and Renewable Consumption",
+     col="blue")
+abline(modA9, col="red", lwd=2)
+```
+
+## Step 3 : Multivariable models and model selection ##
+
+Finally, we are going to do a multivariate OLS *explain why*
+```{r}
+mod_multiple <-lm(Renewable_energy_consumption ~ 
+               log(GDP_per_capita) +
+               Urban_pop + 
+               Gross_Capital + 
+               log(Trade_GDP) + 
+               Total_natural +
+               Foreign_direct_investement , 
+               data = recentdata)
+stargazer(mod_multiple, type = "text", 
+          title ="Table 11: Multivariable OLS results for Renewable Energy Consumption and the other variables")
+par(mfrow = c(2, 2))
+plot(mod_multiple)
+```
+Really good performing model, and log(GDP_per_capita) remains highly significant,but Trade_GDP and Urban_pop lose significance.
+We are going to compare the models we have *with the R function*
+```{r}
+model_comparison <- compare_performance(modA1, modA2, modA3, modA4, modA5, modA6,
+                                        modA7, modA8, modA9, mod_multiple, rank = TRUE)
+print_md(model_comparison)
+par(mfrow = c(1, 1))
+plot(model_comparison)
+```
+
+The best model is modA2 *explain*
+
+## Step 4 : Environmental Impact Analysis ##
+
+As a conclusion we are going to check if there is a relation between Renewable Energy Consumption and CO2 emissions per capita
+*why*
+```{r}
+modA10 <- lm(Renewable_energy_consumption ~ C02_emissions, data = recentdata)
+stargazer(modA10, type = "text", 
+          title ="Table 12: OLS results for Renewable Energy Consumption and C02 emissions per capita")
+```
+
+Strong relation *why*
+```{r}
+plot(recentdata$C02_emissions, recentdata$Renewable_energy_consumption,
+     xlab = "C02 emissions per capita", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between C02 emissions and Renewable Consumption",
+     col="blue")
+abline(modA10, col="red", lwd=2)
+```
+
+We try with a logarithmic model
+```{r}
+modA11 <- lm(Renewable_energy_consumption ~ log(C02_emissions), data = recentdata)
+stargazer(modA11, type = "text", 
+          title ="Table 13: OLS results for Renewable Energy Consumption and log(C02 emissions per capita)")
+```
+
+Much better using logarithms!
+```{r}
+plot(log(recentdata$C02_emissions), recentdata$Renewable_energy_consumption,
+     xlab = "log(C02 emissions per capita)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(C02 emissions) and Renewable Consumption",
+     col="blue")
+abline(modA11, col="red", lwd=2)
+```
+
+## Conclusion ##
+
+
