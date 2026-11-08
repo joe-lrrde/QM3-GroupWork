@@ -1,0 +1,375 @@
+---
+title: "QM3-GroupWork"
+author: "J.Larrodé"
+date: "03/11/2026"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    smooth_scroll: true
+    toc_depth: 2
+    theme: sandstone
+    
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(stargazer)
+library(ggplot2)
+library(performance)
+```
+
+# *Research Question*
+
+## Introduction ## 
+
+<br>
+<br>
+
+## Step 1 : Loading Data ## 
+
+Before all we need to install the packages needed to conduct our analysis *should that go in the Intro maybe?*
+```{r eval=FALSE}
+install.packages("readxl")
+install.packages("stargazer")
+install.packages("ggplot2")
+install.packages("performance")
+install.packages("gvlma")
+```
+
+*"readxl" extracts the data from excel spreadsheets.* <br>
+*"stargazer" and "ggplot2" are used to create plots.* <br>
+*"performance" package allows to use the **model_comparison** R function.* <br>
+*"gvlma" package allows to test linear model fit assumptions*
+We also call their libraries to load the packages. 
+```{r}
+library(readxl)
+library(stargazer)
+library(ggplot2)
+library(performance)
+library(gvlma)
+```
+
+Next we import the datasets we have chosen to use for our analysis. <br>
+<br>
+
+The following allow us to measure pollution : 
+```{r}
+Renewable_energies_dataset <- read_excel("Renewable_energies_dataset.xls")
+```
+While these ones are the different economic factors : 
+
+```{r}
+GDP_per_capita_dataset <- read_excel("GDP per capita dataset.xls")
+Gross_Capital_Formation_percentage_of_GDP_ <- read_excel("Gross Capital Formation (percentage of GDP).xls")
+Urban_population_percentage_of_total_ <- read_excel("Urban population (percentage of total).xls")
+Total_natural_resources_rents_of_GDP_ <- read_excel("Total natural resources rents (% of GDP).xls")
+Trade_of_GDP_ <- read_excel("Trade (% of GDP).xls")
+Foreign_direct_investment<- read_excel("Foreign direct investment, net inflows (% of GDP).xls")
+```
+
+Each dataset has data for multiple years. For accuracy we chose to focus on the most recent year with the most amount of data, this proved to be the year of 2021 : 
+
+```{r}
+recentdata<-data.frame(Country = Renewable_energies_dataset$`Country Name`, 
+                       Renewable_energy_consumption = Renewable_energies_dataset$`2021`)
+```
+```{r}
+recentdata <- within(recentdata, {
+              GDP_per_capita = GDP_per_capita_dataset$`2021`
+              Gross_Capital  = Gross_Capital_Formation_percentage_of_GDP_$`2021`
+              Urban_pop      = Urban_population_percentage_of_total_$`2021`
+              Total_natural  = Total_natural_resources_rents_of_GDP_$`2021`
+              Trade_GDP      = Trade_of_GDP_$`2021`
+              Foreign_direct_investment= Foreign_direct_investment$`2021`
+              })
+recentdata <-na.omit(recentdata)
+```
+
+**Table 1**<br>
+*( descriptive statistics )*
+```{r}
+#We create a table of descriptive statistics or "Table 1"
+stargazer(recentdata, type="text", digits=1,
+          title ="Table 1: Summary Statistics of the Variables (2021)")
+```
+Table 1 summarises complete data for 165 countries in 2021.
+<br>
+The renewable energy share is very different from country to country, from 0% to 96.3% of total final energy consumption, with a mean of 32.3% and a standard deviation of 26.9. GDP per capita is heavily right-skewed, as its standard deviation (US$21,505) is bigger than its mean (US$15,522), and the richest country’s income is around 280 times that of the poorest. Most countries are at the lower end of the income distribution, which is why we use log GDP per capita in Table 3. <br>
+For the other variables, urbanisation is fairly evenly spread (16.5% to 100%), and gross capital formation varies less than the others, with an average of 23.9% of GDP. Trade openness and natural resource rents are also right-skewed. Most countries are at middle levels, but a few small states are much higher than the rest. FDI has an extreme outlier of 413.3% of GDP, while the mean is only 6.6%. The negative minimum for gross capital formation (−15.7%) is a bit unusual and may be a data issue.<br>
+
+```{r}
+#We do a boxplot of each variable
+
+boxplot(recentdata$Renewable_energy_consumption, main="Renewable Energy Consumption", ylab="Percentage of GDP", col="blue")
+boxplot(recentdata$GDP_per_capita, main="GDP per Capita", ylab="2015 Dollars", col="green")
+boxplot(recentdata$Gross_Capital, main="Gross Capital Formation", ylab="Percentage of GDP", col="violet")
+boxplot(recentdata$Urban_pop, main="Urban population", ylab="Percentage of Total", col="red")
+boxplot(recentdata$Total_natural, main="Total natural resources rents", ylab="Percentage of GDP", col="orange")
+boxplot(recentdata$Trade_GDP, main="Trade", ylab="Percentage of GDP", col="maroon")
+boxplot(recentdata$Foreign_direct_investment, main="Foreign direct investment, net inflows", ylab="Percentage of GDP", col="purple")
+```
+
+## Step 2 : Bivariate and Logarithmic OLS ##
+<br>
+We choose to use the Ordinary Least Squares (OLS) regression because it is considered the Best Linear Unbiased Estimator (BLUE). It has a low variance level, it uses the true values of the estimated alpha and beta and on a large sample it will have a precise estimation. 
+
+First, we look at the relationship between Renewable Energy Consumption and GPD per capita. 
+**Table 2**
+```{r}
+modA1 <- lm(Renewable_energy_consumption ~ GDP_per_capita, data = recentdata)
+stargazer(modA1, type = "text", 
+          title ="Table 2: OLS results for Renewable Energy Consumption and GDP per capita")
+```
+The results show a negative and statistically significant relationship between GDP per capita and the renewable energy share (p < 0.01). The coefficient is −0.0004, so a $10,000 increase in GDP per capita is linked to about a 4 percentage point decrease in the renewable energy share. <br>
+<br> 
+We can infer that countries with higher GDP per capita tend to have lower shares of renewable energy on average. This is likely because the data includes traditional biomass like firewood, which is common in poorer countries. As countries get richer, households tend to shift from firewood to fossil fuels and electricity (Leach, 1992, p. 116).
+<br>
+The R² is 0.093, which means GDP per capita only explains about 9% of the variation across the 165 countries in our sample. So although the result is significant, there are probably other variables that matter more for renewable energy use. <br>
+
+*Model fit : * 
+It is also important to plot the relationship to assess the fit of the model used. 
+```{r}
+plot(recentdata$GDP_per_capita, recentdata$Renewable_energy_consumption,
+     xlab = "GDP per Capita", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between GDP per Capita and Renewable Consumption",
+     col="blue")
+abline(modA1, col="red", lwd=2)
+```
+<br> *assessment based on look* <br>
+<br>
+Visual assessment is not the most precise so we can check the validation of the linear model assumptions using the R function "gvlma".  
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA1)
+plot(check_model(modA1, panel = FALSE))
+```
+*quick model fit analysis*
+
+Now we try using logarithms in the GDP per capita to increase the precision of the model.<br>
+**Table 3**
+```{r}
+modA2 <- lm(Renewable_energy_consumption ~ log(GDP_per_capita), data =recentdata)
+stargazer(modA2, type="text", 
+          title ="Table 3: OLS results for Renewable Energy Consumption and log(GDP per capita)")
+```
+With the log the relationship is still negative and statistically significant (p < 0.01). The coefficient is −11.091, meaning a 1% increase in GDP per capita is linked to about a 0.11 percentage point decrease in the renewable energy share. Since a 1% change is quite small, another way to see it is that when GDP per capita doubles, the renewable energy share is about 7.7 percentage points lower on average. <br>
+<br>
+The R² increases from 0.093 in Table 2 to 0.349, so this model explains about 35% of the variation in the renewable energy share. This is almost four times more than the linear model. We think this is because GDP per capita is very right-skewed (Table 1). The linear model assumes that every extra dollar has the same effect, but the log model looks at percentage changes in GDP instead. This fits the data better, because a small rise in income matters more for poorer countries than for rich ones.
+ <br>
+
+Again we can do a visual check
+```{r}
+plot(log(recentdata$GDP_per_capita), recentdata$Renewable_energy_consumption,
+     xlab = "log(GDP per Capita)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(GDP per Capita) and Energy Consumption",
+     col="blue")
+abline(modA2, col="red", lwd=2)
+```
+*model fit analysis*
+
+And again, we check the validation of the linear model assumptions for this case.
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA2)
+plot(check_model(modA2, panel = FALSE))
+```
+*model fit analysis*
+
+We are going to check the relationship with other variables
+**Table 4**
+```{r}
+modA3 <- lm(Renewable_energy_consumption ~ Gross_Capital, data = recentdata)
+stargazer(modA3, type="text", 
+          title ="Table 4: OLS results for Renewable Energy Consumption and Gross Capital Formation")
+```
+Gross capital formation has no significant relationship with the renewable energy share (p > 0.1). The coefficient is very close to zero (−0.058), and the R² is only 0.0003, so investment explains almost none of the differences between countries. <br>
+
+We can also do a visual check to understand why it isn't significant. 
+```{r}
+plot(recentdata$Gross_Capital, recentdata$Renewable_energy_consumption,
+     xlab = "Gross Capital Formation (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Gross Capital Formation and Renewable Consumption",
+     col="blue")
+abline(modA3, col="red", lwd=2)
+```
+
+And even go further with the assumtion check with the "gvlma" function. 
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA3)
+plot(check_model(modA3, panel = FALSE))
+```
+
+**Table 5 : ** *urban population* <br>
+```{r}
+modA4 <- lm(Renewable_energy_consumption ~ Urban_pop, data = recentdata)
+stargazer(modA4, type="text", 
+          title ="Table 5: OLS results for Renewable Energy Consumption and Urban Population")
+```
+<br>
+Urban population has a negative and statistically significant relationship with the renewable energy share (p < 0.01). The coefficient is −0.607, so a 10 percentage point increase in the urban population share is linked to about a 6 percentage point decrease in the renewable energy share. The R² is 0.239, which means urbanisation explains about 24% of the variation. This makes it the strongest variable after GDP per capita. One reason could be that people in cities rely less on firewood and more on electricity and fossil fuels (Barnes, Krutilla and Hyde, 2004, p. 27). <br>
+
+```{r}
+plot(recentdata$Urban_pop, recentdata$Renewable_energy_consumption,
+     xlab = "Urban Population (% of total)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Urban Population and Renewable Consumption",
+     col="blue")
+abline(modA4, col="red", lwd=2)
+```
+
+We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA4)
+plot(check_model(modA4, panel = FALSE))
+```
+
+**Table 6 : ***log of urban pop*
+
+```{r}
+modA5<-lm(Renewable_energy_consumption ~ log(Urban_pop), data =recentdata)
+stargazer(modA5, type="text", 
+          title ="Table 6: OLS results for Renewable Energy Consumption and log(Urban Population)")
+```
+Taking the log of urban population does not improve the model. The relationship is still negative and statistically significant (p < 0.01), with a coefficient of −30.855. This means a 1% increase in the urban population share is linked to about a 0.31 percentage point decrease in the renewable energy share. However, the R² drops slightly from 0.239 in Table 5 to 0.232. This is probably because the urban population is already fairly evenly spread (Table 1), so it does not need a log transformation like GDP does.
+<br>
+<br>
+**Table 7 :***Renewable Energy Consumption and Natural Resources availability*
+```{r}
+modA6 <- lm(Renewable_energy_consumption ~ Total_natural, data = recentdata)
+stargazer(modA6, type="text", 
+          title ="Table 7: OLS results for Renewable Energy Consumption and Total Natural Resources")
+```
+Natural resource rents have no significant relationship with the renewable energy share (p > 0.1). The coefficient is very close to zero (0.041), and the R² is only 0.0003, so this variable explains almost none of the differences between countries.
+<br>
+
+#There is no significant relationship between those two variables
+
+```{r}
+plot(recentdata$Total_natural, recentdata$Renewable_energy_consumption,
+     xlab = "Total Natural Resources (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Total Natural Resources and Renewable Consumption",
+     col="blue")
+abline(modA6, col="red", lwd=2)
+```
+
+#We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA6)
+plot(check_model(modA6, panel = FALSE))
+```
+
+**Table 8 : ***Renewable Energt Consumption and Trade*
+```{r}
+modA7 <- lm(Renewable_energy_consumption ~ Trade_GDP, data = recentdata)
+stargazer(modA7, type="text", 
+          title ="Table 8: OLS results for Renewable Energy Consumption and Trade as % of GDP")
+```
+Trade openness has a negative and statistically significant relationship with the renewable energy share (p < 0.01). The coefficient is −0.143, so a 10 percentage point increase in trade as a share of GDP is linked to about a 1.4 percentage point decrease in the renewable energy share. However, the R² is only 0.100, so trade explains about 10% of the variation, which is much weaker than GDP per capita or urbanisation.
+
+```{r}
+plot(recentdata$Trade_GDP, recentdata$Renewable_energy_consumption,
+     xlab = "Total Trade (% of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Total Trade and Renewable Consumption",
+     col="blue")
+abline(modA7, col="red", lwd=2)
+```
+
+We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA7)
+plot(check_model(modA7, panel = FALSE))
+```
+
+We try using logarithms in this case <br>
+**Table 9 :***Renewable Energy Consumption and log of trade*
+```{r}
+modA8 <-lm(Renewable_energy_consumption ~ log(Trade_GDP), data =recentdata)
+stargazer(modA8, type="text", 
+          title ="Table 9: OLS results for Renewable Energy Consumption and log(Trade as % of GDP)")
+```
+Using the log of trade improves the model slightly. The relationship is still negative and statistically significant (p < 0.01), with a coefficient of −15.636. This means a 1% increase in trade is linked to about a 0.16 percentage point decrease in the renewable energy share. The R² increases from 0.100 in Table 8 to 0.117. This makes sense because trade is right-skewed (Table 1), but the improvement is small, and trade still explains much less of the variation than GDP per capita or urbanisation.
+<br>
+
+```{r}
+plot(log(recentdata$Trade_GDP), recentdata$Renewable_energy_consumption,
+     xlab = "log(Total Trade as % of GDP)", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between log(Total Trade) and Renewable Consumption",
+     col="blue")
+abline(modA8, col="red", lwd=2)
+```
+
+We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA8)
+plot(check_model(modA8, panel = FALSE))
+```
+
+**Table 10 :*** Renewable Energy Consumption and Foreign direct investment*
+```{r}
+modA9 <- lm(Renewable_energy_consumption ~ Foreign_direct_investment, data = recentdata)
+summary(modA9)
+stargazer(modA9, type="text", 
+          title ="Table 10: OLS results for Renewable Energy Consumption and Foreign direct investment")
+```
+FDI has no significant relationship with the renewable energy share (p > 0.1). The coefficient is close to zero (−0.072), and the R² is only 0.008, so FDI explains less than 1% of the variation between countries. As shown in Table 1, FDI has one extreme value of 413.3% of GDP, which may also affect this result.<br>
+
+```{r}
+plot(recentdata$Foreign_direct_investment, recentdata$Renewable_energy_consumption,
+     xlab = "Foreign direct investment", 
+     ylab = "Renewable Energy Consumption",
+     main = "Relation between Foreign direct investment and Renewable Consumption",
+     col="blue")
+abline(modA9, col="red", lwd=2)
+```
+
+We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(modA9)
+plot(check_model(modA9, panel = FALSE))
+```
+
+## Step 3 : Multivariable models and model selection ##
+
+Finally, we are going to do a multivariate OLS *explain why*
+```{r}
+mod_multiple <-lm(Renewable_energy_consumption ~ 
+               log(GDP_per_capita) +
+               Urban_pop + 
+               Gross_Capital + 
+               log(Trade_GDP) + 
+               Total_natural +
+               Foreign_direct_investment , 
+               data = recentdata)
+stargazer(mod_multiple, type="text", 
+          title ="Table 11: Multivariable OLS results for Renewable Energy Consumption and the other variables")
+```
+This table includes all the variables in one model, so we can see the effect of each factor while holding the others constant. Only log GDP per capita stays significant (p < 0.01). Its coefficient is −9.636, which means a 1% increase in GDP per capita is linked to about a 0.10 percentage point decrease in the renewable energy share, holding the other variables constant. If GDP per capita doubles, the renewable energy share is about 6.7 percentage points lower. This is close to the result in Table 3 (7.7 percentage points), so the effect of GDP stays fairly stable after adding the other variables. <br>
+<br>
+Urbanisation and trade were both significant on their own (Tables 5 and 9), but they are no longer significant here (p > 0.1). This suggests that part of their effect in the single-variable models was actually picking up the effect of GDP, since richer countries also tend to be more urban. Gross capital formation, natural resource rents and FDI are still not significant. <br>
+<br>
+The model as a whole is significant (F = 15.77, p < 0.01). The R² is 0.374, but the adjusted R² is 0.351, only slightly higher than 0.345 for the log GDP model in Table 3. This means adding five more variables barely improves how well the model explains the renewable energy share. <br>
+
+We check the validation of the linear model assumptions for this case
+```{r, fig.width=14, fig.height=3.5, out.width="100%", message=FALSE, warning=FALSE}
+gvlma(mod_multiple)
+plot(check_model(mod_multiple, panel = FALSE))
+```
+
+We are going to compare the models we have
+```{r}
+model_comparison <- compare_performance(modA1, modA2, modA3, modA4, modA5, modA6,
+                                        modA7, modA8, modA9, mod_multiple, rank = TRUE)
+print_md(model_comparison)
+par(mfrow = c(1, 1))
+plot(model_comparison)
+```
+
+The best model is modA2 
+
+## Conclusion ##
